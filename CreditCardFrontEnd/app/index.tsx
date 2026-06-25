@@ -11,7 +11,7 @@ const giftIcon = require('@/assets/images/mockups/icon-gift.png');
 const bagIcon = require('@/assets/images/mockups/icon-shopping-bag.png');
 
 export default function SplashScreen() {
-  const { isAuthenticated, isReady, user } = useAuth();
+  const { isAuthenticated, isReady } = useAuth();
   const fade = useRef(new Animated.Value(0)).current;
   const slide = useRef(new Animated.Value(24)).current;
   const progress = useRef(new Animated.Value(0)).current;
@@ -41,12 +41,11 @@ export default function SplashScreen() {
     const timeout = setTimeout(() => {
       if (!isReady) return;
 
-      const status = user?.credit_card_profile?.application_status;
-      router.replace(isAuthenticated && status && status !== 'draft' ? '/register' : '/welcome');
+      router.replace(isAuthenticated ? '/(tabs)' : '/welcome');
     }, 1700);
 
     return () => clearTimeout(timeout);
-  }, [fade, isAuthenticated, isReady, progress, slide, user?.credit_card_profile?.application_status]);
+  }, [fade, isAuthenticated, isReady, progress, slide]);
 
   const progressWidth = progress.interpolate({
     inputRange: [0, 1],

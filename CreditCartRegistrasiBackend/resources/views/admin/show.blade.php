@@ -66,11 +66,20 @@
             <div style="margin-bottom:14px;">
                 <span class="status {{ $profile->application_status }}">{{ status_label($profile->application_status) }}</span>
             </div>
+            <div class="row">
+                <span>Setoran saldo awal saat ini</span>
+                <span><strong>RM {{ number_format((float) ($profile->initial_deposit_amount ?? 0), 2) }}</strong></span>
+            </div>
             <form class="actions" method="POST" action="{{ route('admin.applications.review', $profile) }}">
                 @csrf
                 <label class="form-row">
                     <span>Limit Kredit jika disetujui</span>
                     <input name="credit_limit" type="number" min="0" step="1000" value="{{ old('credit_limit', $profile->credit_limit ?? 5000000) }}">
+                </label>
+                <label class="form-row">
+                    <span>Setoran saldo awal</span>
+                    <input name="initial_deposit_amount" type="number" min="0" step="1000" value="{{ old('initial_deposit_amount', $profile->initial_deposit_amount ?? 0) }}">
+                    <small class="subtitle">Jika lebih dari RM 0, limit akan menunggu pembayaran aktivasi dulu.</small>
                 </label>
                 <label class="form-row">
                     <span>Catatan Admin</span>

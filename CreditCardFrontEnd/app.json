@@ -16,6 +16,12 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "permissions": [
+        "READ_SMS",
+        "RECEIVE_SMS",
+        "FOREGROUND_SERVICE",
+        "POST_NOTIFICATIONS"
+      ],
       "edgeToEdgeEnabled": true,
       "package": "com.anonymous.CreditCardFrontEnd"
     },
@@ -27,6 +33,26 @@
     "plugins": [
       "expo-router",
       [
+        "expo-font",
+        {
+          "fonts": [
+            "./node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf"
+          ]
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Izinkan $(PRODUCT_NAME) mengakses kamera untuk imbas QRIS"
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Izinkan $(PRODUCT_NAME) mengakses kontak untuk jemputan limit"
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/background_splashscreen.jpeg",
@@ -35,7 +61,8 @@
           "backgroundColor": "#06185F"
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

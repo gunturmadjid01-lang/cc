@@ -33,7 +33,10 @@ class AuthController extends Controller
         ]);
 
         if ($user->role === 'customer') {
-            $user->creditCardProfile()->create(['application_status' => 'draft']);
+            $user->creditCardProfile()->create([
+                'application_status' => 'draft',
+                'status_profile' => false,
+            ]);
         }
 
         return response()->json([

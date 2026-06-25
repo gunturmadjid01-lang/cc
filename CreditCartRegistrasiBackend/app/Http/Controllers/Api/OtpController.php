@@ -17,6 +17,16 @@ class OtpController extends Controller
 
         abort_unless($profile, 404, 'Profil pengajuan belum ditemukan.');
 
+        $uploadedRequiredDocuments = $user->verificationDocuments()
+            ->whereIn('type', ['ktp', 'npwp', 'selfie'])
+            ->count();
+
+        if ($uploadedRequiredDocuments < 3) {
+            return response()->json([
+                'message' => 'Lengkapi dokumen wajib: KTP, NPWP, dan foto selfie sebelum meminta OTP.',
+            ], 422);
+        }
+
         $otp = (string) random_int(100000, 999999);
         $profile->forceFill([
             'application_status' => 'otp_pending',
@@ -27,13 +37,14 @@ class OtpController extends Controller
         $token = config('services.fonnte.token');
 
         if ($token) {
+            $target = $this->normalizePhoneTarget($user->phone);
+
             $response = Http::asForm()
                 ->withHeaders(['Authorization' => $token])
                 ->timeout(15)
                 ->post('https://api.fonnte.com/send', [
-                    'countryCode' => (string) config('services.fonnte.country_code', '60'),
                     'message' => "Kode OTP pengajuan kartu kredit Nexa Anda: {$otp}. Berlaku 5 menit. Jangan bagikan kode ini kepada siapa pun.",
-                    'target' => $user->phone,
+                    'target' => $target,
                     'typing' => false,
                 ]);
 
@@ -93,5 +104,16 @@ class OtpController extends Controller
         );
 
         return $number;
+    }
+
+    private function normalizePhoneTarget(?string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $phone);
+
+        if (str_starts_with($digits, '0')) {
+            return (string) config('services.fonnte.country_code', '60') . ltrim($digits, '0');
+        }
+
+        return $digits;
     }
 }

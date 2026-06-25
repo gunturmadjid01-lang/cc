@@ -56,7 +56,7 @@ export default function WelcomeScreen() {
               <Text style={styles.cardName}>Prime Card</Text>
               <Text style={styles.cardDesc}>Cocok untuk kebutuhan sehari-hari</Text>
               <Text style={styles.feeLabel}>Annual Fee</Text>
-              <Text style={styles.feeValue}>Rp 250.000</Text>
+              <Text style={styles.feeValue}>RM 250,000.00</Text>
             </View>
           </View>
 

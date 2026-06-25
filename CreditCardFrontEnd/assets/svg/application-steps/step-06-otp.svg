@@ -1,0 +1,21 @@
+<svg width="320" height="180" viewBox="0 0 320 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="phone" x1="109" y1="24" x2="211" y2="155" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#123DB8"/>
+      <stop offset="1" stop-color="#061A57"/>
+    </linearGradient>
+    <linearGradient id="bubble" x1="195" y1="47" x2="268" y2="105" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2F6BFF"/>
+      <stop offset="1" stop-color="#0D2C91"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="160" cy="154" rx="92" ry="12" fill="#0A2B88" opacity=".1"/>
+  <rect x="108" y="22" width="104" height="136" rx="28" fill="url(#phone)"/>
+  <rect x="124" y="42" width="72" height="92" rx="16" fill="#EEF4FF"/>
+  <path d="M143 81h34M143 103h26" stroke="#5275D9" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="160" cy="144" r="5" fill="#DDE7FF"/>
+  <path d="M218 50h31c14 0 25 11 25 25s-11 25-25 25h-11l-18 16 4-17h-6c-14 0-25-11-25-25s11-24 25-24z" fill="url(#bubble)"/>
+  <path d="M222 76h4M238 76h4M254 76h4" stroke="#fff" stroke-width="8" stroke-linecap="round"/>
+  <rect x="50" y="83" width="50" height="50" rx="17" fill="#F5B82E"/>
+  <path d="M64 106h22M75 95v22" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+</svg>

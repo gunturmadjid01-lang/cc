@@ -1,0 +1,21 @@
+<svg width="320" height="180" viewBox="0 0 320 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="panel" x1="82" y1="25" x2="226" y2="154" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5F8FF"/>
+      <stop offset="1" stop-color="#DDE7FF"/>
+    </linearGradient>
+    <linearGradient id="avatar" x1="116" y1="54" x2="167" y2="110" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2F6BFF"/>
+      <stop offset="1" stop-color="#071F73"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="160" cy="154" rx="94" ry="12" fill="#0A2B88" opacity=".1"/>
+  <rect x="78" y="26" width="164" height="128" rx="24" fill="url(#panel)" stroke="#C3D2FF" stroke-width="2"/>
+  <circle cx="134" cy="75" r="24" fill="url(#avatar)"/>
+  <path d="M118 119c4-23 29-33 49-17 6 5 10 11 12 17" stroke="#12369C" stroke-width="12" stroke-linecap="round"/>
+  <path d="M188 68h32M188 88h22M188 111h34M188 131h24" stroke="#5275D9" stroke-width="7" stroke-linecap="round"/>
+  <rect x="53" y="54" width="46" height="46" rx="16" fill="#12369C"/>
+  <path d="M68 82l8 8 16-22" stroke="#FFE18A" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="232" y="106" width="42" height="42" rx="14" fill="#F5B82E"/>
+  <path d="M246 127h15M253.5 119.5v15" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
+</svg>

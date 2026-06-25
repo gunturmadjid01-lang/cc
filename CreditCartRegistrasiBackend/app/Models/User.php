@@ -25,6 +25,8 @@ class User extends Authenticatable
         'role',
         'api_token',
         'password',
+        'transaction_pin_hash',
+        'transaction_pin_updated_at',
     ];
 
     /**
@@ -35,6 +37,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'transaction_pin_hash',
     ];
 
     /**
@@ -47,6 +50,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'transaction_pin_updated_at' => 'datetime',
         ];
     }
 
@@ -60,8 +64,18 @@ class User extends Authenticatable
         return $this->hasMany(VerificationDocument::class);
     }
 
+    public function cardPayments()
+    {
+        return $this->hasMany(CardPayment::class);
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    public function readsSmsAis()
+    {
+        return $this->hasMany(ReadsSmsAi::class);
     }
 }

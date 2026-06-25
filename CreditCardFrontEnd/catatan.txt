@@ -1,0 +1,11 @@
+ini errornya.
+integrasikan semua fitur crud update baik di backend dan seluruh halaman yang ada pada frontendnya, terutama saat data costumer telah disetujui saya mau secara otomatis muncul modal ucapan selamat permintaan kartu kredit anda telah disetujui, limit saldo anda Rm ..... , silahkan melakukan deposit awal sebesar Rm ...... .
+
+tapi saya mau modal ini tampil sekali jadi walaupun aplikasi belum terbuka oleh pengguna, maka saat dibuka dia baru muncul. tapi ketika sudah diklose dia tidak akan muncul lagi. jadi modal ini muncul hanya satu kali saja saat pengajuan telah disetujui.
+kemudian terapkan fitur midtrans snapboxnya di pembayarannya lah, jadi saat user mau melakukan pembayaran saldo awal maka muncul halaman pembayaran awal snapbox midtransnya
+tapi ini saya mau pada halaman pembayaran nominal deposit awal itu muncul di halama pembayaran jika belum melakukan deposit awal. tapi kalau sudah halaman pembayaran ini digunakan untuk submit pembayaran tagihan kartu kreditnya
+jadi buatkan controller untuk tangani topup deposit saldo awal, dan deposit pembayaran tagihan kartu kreditnya. lalu buatkan difrontend riwayat pembayaran lengkap dengan statusnya(update otomatis), lalu ada grafik transaksi belanja dan grafik pemasukan vs pengeluaran
+lalu saya mau saat pembayaran midtrans berhasil dilakukan maka mengarahan pengguna ke halaman informasi detail transaksi lengkap dengan status dan nomor transaksi layaknya aplikasi pembayaran digital pada umumnya
+kemudian kartu kredit dihalaman beranda itu bisa diklick yang akan mengarahkan pengguna kehalaman detail informasi kartu. jadi disitu nanti pengguna lihat nomor kartu dan lainnya
+
+pusher fonnte, dan midtrans sudah ada di .env silahkan check

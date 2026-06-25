@@ -46,7 +46,10 @@ class CustomerApplicationController extends Controller
 
         $profile = $request->user()->creditCardProfile()->updateOrCreate(
             ['user_id' => $request->user()->id],
-            array_merge($data, ['application_status' => 'otp_pending'])
+            array_merge($data, [
+                'application_status' => 'otp_pending',
+                'status_profile' => true,
+            ])
         );
 
         return response()->json([
@@ -57,7 +60,7 @@ class CustomerApplicationController extends Controller
 
     public function uploadDocument(Request $request, string $type)
     {
-        abort_unless(in_array($type, ['ktp', 'face'], true), 404);
+        abort_unless(in_array($type, ['ktp', 'npwp', 'selfie', 'salary_slip', 'bank_statement'], true), 404);
 
         $data = $request->validate([
             'file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],

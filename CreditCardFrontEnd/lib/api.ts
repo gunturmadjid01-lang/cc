@@ -6,7 +6,7 @@ export const API_BASE_URL =
 
 export type VerificationDocument = {
   id: number;
-  type: 'ktp' | 'face';
+  type: 'ktp' | 'npwp' | 'selfie' | 'salary_slip' | 'bank_statement';
   file_url: string;
   status: 'pending' | 'approved' | 'rejected';
   notes?: string | null;
@@ -16,7 +16,17 @@ export type CreditCardProfile = {
   id: number;
   application_number?: string | null;
   application_status: 'draft' | 'otp_pending' | 'pending' | 'approved' | 'rejected';
+  status_profile?: boolean;
   credit_limit?: string | null;
+  card_number?: string | null;
+  card_holder_name?: string | null;
+  card_expiry_month?: string | null;
+  card_expiry_year?: string | null;
+  card_cvv?: string | null;
+  available_limit?: string | null;
+  initial_deposit_amount?: string | null;
+  initial_deposit_status?: 'not_required' | 'pending' | 'paid' | 'failed' | string;
+  credit_limit_unlocked_at?: string | null;
   nik?: string | null;
   address?: string | null;
   city?: string | null;
@@ -34,6 +44,7 @@ export type CreditCardProfile = {
   work_locality?: string | null;
   work_postal_code?: string | null;
   submitted_at?: string | null;
+  otp_expires_at?: string | null;
   otp_verified_at?: string | null;
   admin_notes?: string | null;
 };

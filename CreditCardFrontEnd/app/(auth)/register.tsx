@@ -1,10 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { CountryFlag, StepIllustration } from '@/components/application/ApplicationSvgs';
 import { useAuth } from '@/context/AuthContext';
 import { apiRequest, CreditCardProfile } from '@/lib/api';
+
+type CountryCode = 'BN' | 'ID' | 'MY' | 'SG';
+type DocumentType = 'bank_statement' | 'ktp' | 'npwp' | 'salary_slip' | 'selfie';
+
+type LocalDocument = {
+  name: string;
+  required: boolean;
+  type: DocumentType;
+  uri: string;
+};
 
 type ApplicationForm = {
   birthDate: string;
@@ -26,6 +39,7 @@ type ApplicationForm = {
   name: string;
   password: string;
   phone: string;
+  phoneCountry: CountryCode;
   phoneCode: string;
   status: string;
   workAddress: string;
@@ -46,34 +60,88 @@ type AddressSuggestion = {
   state: string;
 };
 
+type Option<T extends string = string> = {
+  label: string;
+  value: T;
+};
+
+const countries: (Option<CountryCode> & { dialCode: string; hint: string })[] = [
+  { dialCode: '+60', hint: 'Contoh 0123456789', label: 'Malaysia', value: 'MY' },
+  { dialCode: '+62', hint: 'Contoh 085123456789', label: 'Indonesia', value: 'ID' },
+  { dialCode: '+65', hint: 'Contoh 81234567', label: 'Singapura', value: 'SG' },
+  { dialCode: '+673', hint: 'Contoh 7123456', label: 'Brunei', value: 'BN' },
+];
+
+const genderOptions: Option[] = [
+  { label: 'Laki-laki', value: 'male' },
+  { label: 'Perempuan', value: 'female' },
+];
+
+const employmentOptions: Option[] = [
+  { label: 'Karyawan Swasta', value: 'Karyawan Swasta' },
+  { label: 'Pegawai Negeri', value: 'Pegawai Negeri' },
+  { label: 'Karyawan BUMN', value: 'Karyawan BUMN' },
+  { label: 'Karyawan Kontrak', value: 'Karyawan Kontrak' },
+  { label: 'Wiraswasta', value: 'Wiraswasta' },
+  { label: 'Pemilik Usaha', value: 'Pemilik Usaha' },
+  { label: 'Profesional', value: 'Profesional' },
+  { label: 'Freelancer', value: 'Freelancer' },
+  { label: 'Guru / Dosen', value: 'Guru / Dosen' },
+  { label: 'Tenaga Kesehatan', value: 'Tenaga Kesehatan' },
+  { label: 'Teknologi Informasi', value: 'Teknologi Informasi' },
+  { label: 'Sales / Marketing', value: 'Sales / Marketing' },
+  { label: 'Keuangan / Akuntansi', value: 'Keuangan / Akuntansi' },
+  { label: 'Transportasi / Logistik', value: 'Transportasi / Logistik' },
+  { label: 'Hospitality / F&B', value: 'Hospitality / F&B' },
+  { label: 'Mahasiswa', value: 'Mahasiswa' },
+  { label: 'Ibu Rumah Tangga', value: 'Ibu Rumah Tangga' },
+  { label: 'Pensiunan', value: 'Pensiunan' },
+];
+
+const incomeOptions: Option[] = [
+  { label: '< RM 1000', value: '999' },
+  { label: 'RM 1.000 - RM 2.000', value: '1500' },
+  { label: 'RM 2.000 - RM 5.000', value: '3500' },
+  { label: '> RM 5000', value: '5001' },
+];
+
+const documentMeta: { description: string; name: string; required: boolean; type: DocumentType }[] = [
+  { description: 'Foto KTP yang jelas dan seluruh data terbaca.', name: 'KTP', required: true, type: 'ktp' },
+  { description: 'Foto NPWP atau dokumen pajak yang masih berlaku.', name: 'NPWP', required: true, type: 'npwp' },
+  { description: 'Foto selfie wajah dari depan dengan pencahayaan cukup.', name: 'Foto Selfie', required: true, type: 'selfie' },
+  { description: 'Opsional, slip gaji 3 bulan terakhir.', name: 'Slip Gaji', required: false, type: 'salary_slip' },
+  { description: 'Opsional, rekening koran 3 bulan terakhir.', name: 'Rekening Koran', required: false, type: 'bank_statement' },
+];
+
 const initialForm: ApplicationForm = {
-  birthDate: '15/08/1990',
-  birthPlace: 'Kuala Lumpur',
-  company: 'PT Maju Bersama',
-  email: 'andi.pratama@email.com',
-  emergencyContactName: 'Budi Pratama',
-  emergencyContactPhone: '+60129876543',
-  gender: 'male',
-  homeAddress: 'Jalan Ampang, Kuala Lumpur',
-  homeCity: 'Kuala Lumpur',
-  homeDistrict: 'Kuala Lumpur',
-  homeLocality: 'Ampang',
-  homePostalCode: '50450',
-  homeState: 'Wilayah Persekutuan Kuala Lumpur',
-  identityNumber: '900815-14-5678',
-  income: 'RM 4,500',
-  job: 'Manajer Pemasaran',
-  name: 'Andi Pratama',
-  password: 'password123',
-  phone: '123456789',
+  birthDate: '',
+  birthPlace: '',
+  company: '',
+  email: '',
+  emergencyContactName: '',
+  emergencyContactPhone: '',
+  gender: '',
+  homeAddress: '',
+  homeCity: '',
+  homeDistrict: '',
+  homeLocality: '',
+  homePostalCode: '',
+  homeState: '',
+  identityNumber: '',
+  income: '',
+  job: '',
+  name: '',
+  password: '',
+  phone: '',
+  phoneCountry: 'MY',
   phoneCode: '+60',
-  status: 'Karyawan Swasta',
-  workAddress: 'Menara Maybank, 100 Jalan Tun Perak',
-  workCity: 'Kuala Lumpur',
-  workDistrict: 'Kuala Lumpur',
-  workLocality: 'Bukit Bintang',
-  workPostalCode: '50050',
-  workState: 'Wilayah Persekutuan Kuala Lumpur',
+  status: '',
+  workAddress: '',
+  workCity: '',
+  workDistrict: '',
+  workLocality: '',
+  workPostalCode: '',
+  workState: '',
 };
 
 const stepMeta = [
@@ -87,6 +155,8 @@ const stepMeta = [
 ] as const;
 
 export default function RegisterScreen() {
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const profileMode = mode === 'profile';
   const { isAuthenticated, register, refreshMe, token, user } = useAuth();
   const [form, setForm] = useState<ApplicationForm>(() => formFromProfile(user?.credit_card_profile, user));
   const [step, setStep] = useState(user?.credit_card_profile?.application_status === 'otp_pending' ? 6 : 1);
@@ -94,13 +164,51 @@ export default function RegisterScreen() {
   const [notice, setNotice] = useState('');
   const [otp, setOtp] = useState('');
   const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [otpExpiresAt, setOtpExpiresAt] = useState<string | null>(user?.credit_card_profile?.otp_expires_at ?? null);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [otpRemaining, setOtpRemaining] = useState(0);
+  const [documents, setDocuments] = useState<Partial<Record<DocumentType, LocalDocument>>>({});
   const profile = user?.credit_card_profile;
   const meta = stepMeta[step - 1];
   const submitted = profile?.application_status && !['draft', 'otp_pending'].includes(profile.application_status);
 
   useEffect(() => {
     if (profile?.application_status === 'otp_pending') setStep(6);
-  }, [profile?.application_status]);
+    if (profile?.otp_expires_at) setOtpExpiresAt(profile.otp_expires_at);
+  }, [profile?.application_status, profile?.otp_expires_at]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (step > 1 && !submitted) {
+        setStep((current) => Math.max(1, current - 1));
+        return true;
+      }
+
+      return false;
+    });
+
+    return () => subscription.remove();
+  }, [step, submitted]);
+
+  useEffect(() => {
+    if (!otpExpiresAt || step !== 6) {
+      setOtpRemaining(0);
+      return;
+    }
+
+    const tick = () => {
+      setOtpRemaining(Math.max(0, Math.ceil((new Date(otpExpiresAt).getTime() - Date.now()) / 1000)));
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+
+    return () => clearInterval(interval);
+  }, [otpExpiresAt, step]);
+
+  if (!profileMode) {
+    return <AccountOnlyRegisterScreen />;
+  }
 
   if (submitted) {
     return <StatusScreen profile={profile} />;
@@ -108,6 +216,29 @@ export default function RegisterScreen() {
 
   function updateField(key: keyof ApplicationForm, value: string) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updatePhone(value: string) {
+    const detectedCountry = detectCountry(value);
+    setForm((current) => ({
+      ...current,
+      phone: value,
+      ...(detectedCountry
+        ? {
+            phoneCode: countryByCode(detectedCountry).dialCode,
+            phoneCountry: detectedCountry,
+          }
+        : {}),
+    }));
+  }
+
+  function updateCountry(country: CountryCode) {
+    const selectedCountry = countryByCode(country);
+    setForm((current) => ({
+      ...current,
+      phoneCode: selectedCountry.dialCode,
+      phoneCountry: country,
+    }));
   }
 
   function applyAddress(kind: 'home' | 'work', address: AddressSuggestion) {
@@ -123,6 +254,14 @@ export default function RegisterScreen() {
   }
 
   async function submitReview() {
+    const missingDocument = documentMeta.find((item) => item.required && !documents[item.type]);
+
+    if (missingDocument) {
+      setNotice(`Lengkapi dokumen wajib: ${missingDocument.name}.`);
+      setStep(4);
+      return;
+    }
+
     setLoading(true);
     setNotice('');
 
@@ -144,11 +283,13 @@ export default function RegisterScreen() {
       }
 
       await apiRequest('/profile', { method: 'PUT', token: activeToken, body: profilePayload(form) });
-      const otpResponse = await apiRequest<{ dev_otp?: string | null; message: string }>('/otp/send', {
+      await uploadDocuments(activeToken);
+      const otpResponse = await apiRequest<{ dev_otp?: string | null; expires_at?: string | null; message: string }>('/otp/send', {
         method: 'POST',
         token: activeToken,
       });
       setDevOtp(otpResponse.dev_otp ?? null);
+      setOtpExpiresAt(otpResponse.expires_at ?? null);
       await refreshMe(activeToken);
       setStep(6);
       setNotice(otpResponse.message);
@@ -159,8 +300,31 @@ export default function RegisterScreen() {
     }
   }
 
+  async function uploadDocuments(activeToken: string) {
+    for (const item of Object.values(documents)) {
+      if (!item) continue;
+
+      const body = new FormData();
+      body.append('file', {
+        name: item.name,
+        type: mimeFromUri(item.uri),
+        uri: item.uri,
+      } as unknown as Blob);
+
+      await apiRequest(`/verifications/${item.type}`, {
+        method: 'POST',
+        token: activeToken,
+        body,
+      });
+    }
+  }
+
   async function verifyOtp() {
     if (!token) return;
+    if (otp.length !== 6) {
+      setNotice('Masukkan 6 angka OTP.');
+      return;
+    }
 
     setLoading(true);
     setNotice('');
@@ -168,11 +332,37 @@ export default function RegisterScreen() {
     try {
       await apiRequest('/otp/verify', { method: 'POST', token, body: { otp } });
       await refreshMe();
-      setStep(7);
+      router.replace('/(tabs)');
     } catch (caught) {
       setNotice(caught instanceof Error ? caught.message : 'OTP gagal diverifikasi.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function resendOtp() {
+    if (!token) {
+      setNotice('Sesi login belum siap. Silakan login ulang.');
+      return;
+    }
+
+    setResendLoading(true);
+    setNotice('');
+
+    try {
+      const otpResponse = await apiRequest<{ dev_otp?: string | null; expires_at?: string | null; message: string }>('/otp/send', {
+        method: 'POST',
+        token,
+      });
+      setOtp('');
+      setDevOtp(otpResponse.dev_otp ?? null);
+      setOtpExpiresAt(otpResponse.expires_at ?? null);
+      await refreshMe();
+      setNotice(otpResponse.message);
+    } catch (caught) {
+      setNotice(caught instanceof Error ? caught.message : 'OTP gagal dikirim ulang.');
+    } finally {
+      setResendLoading(false);
     }
   }
 
@@ -187,7 +377,7 @@ export default function RegisterScreen() {
   }
 
   return (
-    <View style={styles.page}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0} style={styles.page}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Pressable onPress={() => (step === 1 ? router.back() : setStep((current) => current - 1))} style={styles.backButton}>
@@ -199,12 +389,12 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.headerInfo}>
-          <View style={styles.headerIcon}>
-            <Ionicons color="#FFFFFF" name={meta.icon} size={22} />
-          </View>
           <View style={styles.headerCopy}>
             <Text style={styles.stepText}>Langkah {step} dari 7</Text>
             <Text style={styles.title}>{meta.title}</Text>
+          </View>
+          <View style={styles.stepIllustration}>
+            <StepIllustration step={step} />
           </View>
         </View>
 
@@ -213,13 +403,37 @@ export default function RegisterScreen() {
       </View>
 
       <View style={styles.sheet}>
-        <ScrollView contentContainerStyle={styles.sheetContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={styles.sheetContent}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           {step === 1 ? <ApplyStep /> : null}
-          {step === 2 ? <PersonalStep form={form} onAddressSelect={(address) => applyAddress('home', address)} updateField={updateField} /> : null}
+          {step === 2 ? (
+            <PersonalStep
+              form={form}
+              onAddressSelect={(address) => applyAddress('home', address)}
+              onCountryChange={updateCountry}
+              updateField={updateField}
+              updatePhone={updatePhone}
+            />
+          ) : null}
           {step === 3 ? <WorkStep form={form} onAddressSelect={(address) => applyAddress('work', address)} updateField={updateField} /> : null}
-          {step === 4 ? <DocumentsStep /> : null}
-          {step === 5 ? <ReviewStep form={form} onEdit={setStep} /> : null}
-          {step === 6 ? <OtpStep devOtp={devOtp} notice={notice} otp={otp} setOtp={setOtp} /> : null}
+          {step === 4 ? <DocumentsStep documents={documents} setDocuments={setDocuments} /> : null}
+          {step === 5 ? <ReviewStep documents={documents} form={form} onEdit={setStep} /> : null}
+          {step === 6 ? (
+            <OtpStep
+              devOtp={devOtp}
+              notice={notice}
+              onResend={resendOtp}
+              otp={otp}
+              remainingSeconds={otpRemaining}
+              resendLoading={resendLoading}
+              setOtp={(value) => setOtp(value.replace(/\D/g, '').slice(0, 6))}
+            />
+          ) : null}
           {step === 7 ? <StatusScreen profile={profile} /> : null}
           {notice && step !== 6 ? <Text style={styles.notice}>{notice}</Text> : null}
         </ScrollView>
@@ -237,7 +451,84 @@ export default function RegisterScreen() {
           ) : null}
         </View>
       ) : null}
-    </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+function AccountOnlyRegisterScreen() {
+  const { register } = useAuth();
+  const [form, setForm] = useState({
+    email: '',
+    name: '',
+    password: '',
+    phone: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState('');
+
+  function updateField(key: 'email' | 'name' | 'password' | 'phone', value: string) {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function submit() {
+    if (!form.name.trim() || !form.email.trim() || !form.password.trim() || !form.phone.trim()) {
+      setNotice('Sila lengkapkan nama, emel, nombor telefon, dan kata laluan.');
+      return;
+    }
+
+    setLoading(true);
+    setNotice('');
+
+    try {
+      await register({
+        email: form.email.trim(),
+        name: form.name.trim(),
+        password: form.password,
+        phone: normalizedPhone({
+          phone: form.phone,
+          phoneCode: '+60',
+          phoneCountry: 'MY',
+        } as ApplicationForm),
+      });
+      router.replace('/(tabs)');
+    } catch (caught) {
+      setNotice(caught instanceof Error ? caught.message : 'Pendaftaran akaun gagal.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.accountPage}>
+      <ScrollView contentContainerStyle={styles.accountContent} keyboardShouldPersistTaps="handled">
+        <View style={styles.accountHero}>
+          <View style={styles.accountBadge}>
+            <Text style={styles.accountBadgeText}>Daftar Akaun</Text>
+          </View>
+          <Text style={styles.accountTitle}>Buka akaun dahulu, lengkapkan profil kemudian.</Text>
+          <Text style={styles.accountSubtitle}>
+            Cukup bina akaun anda sekarang. Selepas log masuk, anda akan terus masuk ke halaman beranda dan boleh sambung isi maklumat permohonan pada bila-bila masa.
+          </Text>
+        </View>
+
+        <View style={styles.accountCard}>
+          <Field label="Nama Penuh" onChangeText={(value) => updateField('name', value)} placeholder="Nama mengikut kad pengenalan" value={form.name} />
+          <Field keyboardType="email-address" label="Emel" onChangeText={(value) => updateField('email', value)} placeholder="nama@contoh.com" value={form.email} />
+          <Field keyboardType="phone-pad" label="No. Telefon" onChangeText={(value) => updateField('phone', value)} placeholder="Contoh 0123456789" value={form.phone} />
+          <Field label="Kata Laluan" onChangeText={(value) => updateField('password', value)} placeholder="Sekurang-kurangnya 8 aksara" secureTextEntry value={form.password} />
+
+          {notice ? <Text style={styles.accountNotice}>{notice}</Text> : null}
+
+          <Pressable disabled={loading} onPress={submit} style={styles.accountPrimaryButton}>
+            {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.accountPrimaryText}>Daftar Akaun</Text>}
+          </Pressable>
+
+          <Pressable onPress={() => router.push('/login')} style={styles.accountSecondaryButton}>
+            <Text style={styles.accountSecondaryText}>Saya sudah ada akaun</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -271,34 +562,45 @@ function MiniBenefit({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; tex
 function PersonalStep({
   form,
   onAddressSelect,
+  onCountryChange,
   updateField,
+  updatePhone,
 }: {
   form: ApplicationForm;
   onAddressSelect: (address: AddressSuggestion) => void;
+  onCountryChange: (country: CountryCode) => void;
   updateField: (key: keyof ApplicationForm, value: string) => void;
+  updatePhone: (value: string) => void;
 }) {
   return (
     <View style={styles.form}>
-      <Field label="Nama Lengkap" onChangeText={(value) => updateField('name', value)} value={form.name} valid />
-      <Field label="Email" onChangeText={(value) => updateField('email', value)} value={form.email} valid />
-      <Field label="Password" onChangeText={(value) => updateField('password', value)} secureTextEntry value={form.password} />
-      <Field label="No. Identitas (MyKad/Paspor)" onChangeText={(value) => updateField('identityNumber', value)} value={form.identityNumber} valid />
-      <Field label="Tempat Lahir" onChangeText={(value) => updateField('birthPlace', value)} value={form.birthPlace} />
-      <Field icon="calendar-outline" label="Tanggal Lahir" onChangeText={(value) => updateField('birthDate', value)} value={form.birthDate} />
-      <Field label="Gender (male/female)" onChangeText={(value) => updateField('gender', value)} value={form.gender} />
+      <Field label="Nama Lengkap" onChangeText={(value) => updateField('name', value)} placeholder="Masukkan nama sesuai identitas" value={form.name} valid />
+      <Field keyboardType="email-address" label="Email" onChangeText={(value) => updateField('email', value)} placeholder="nama@email.com" value={form.email} valid />
+      <Field label="Password" onChangeText={(value) => updateField('password', value)} placeholder="Minimal 8 karakter" secureTextEntry value={form.password} />
+      <Field label="No. Identitas (MyKad/Paspor)" onChangeText={(value) => updateField('identityNumber', value)} placeholder="Masukkan nomor identitas" value={form.identityNumber} valid />
+      <Field label="Tempat Lahir" onChangeText={(value) => updateField('birthPlace', value)} placeholder="Contoh: Kuala Lumpur" value={form.birthPlace} />
+      <DateField label="Tanggal Lahir" onChange={(value) => updateField('birthDate', value)} value={form.birthDate} />
+      <SelectField label="Jenis Kelamin" onChange={(value) => updateField('gender', value)} options={genderOptions} placeholder="Pilih jenis kelamin" value={form.gender} />
       <View style={styles.phoneRow}>
-        <Field label="Kode" onChangeText={(value) => updateField('phoneCode', value)} value={form.phoneCode} />
-        <Field keyboardType="phone-pad" label="Nomor HP" onChangeText={(value) => updateField('phone', value)} value={form.phone} valid />
+        <CountryCodeField country={form.phoneCountry} onChange={onCountryChange} />
+        <Field
+          keyboardType="phone-pad"
+          label="Nomor HP"
+          onChangeText={updatePhone}
+          placeholder={countryByCode(form.phoneCountry).hint}
+          value={form.phone}
+          valid={Boolean(form.phone)}
+        />
       </View>
       <AddressSearch label="Cari Alamat Rumah di Malaysia" onSelect={onAddressSelect} placeholder="Contoh: Jalan Ampang Kuala Lumpur" />
-      <Field label="Alamat Rumah" multiline onChangeText={(value) => updateField('homeAddress', value)} value={form.homeAddress} valid />
-      <Field label="Provinsi/Negeri" onChangeText={(value) => updateField('homeState', value)} value={form.homeState} />
-      <Field label="Kabupaten/Daerah" onChangeText={(value) => updateField('homeDistrict', value)} value={form.homeDistrict} />
-      <Field label="Kecamatan/Mukim" onChangeText={(value) => updateField('homeLocality', value)} value={form.homeLocality} />
-      <Field label="Kota" onChangeText={(value) => updateField('homeCity', value)} value={form.homeCity} />
-      <Field keyboardType="number-pad" label="Kode Pos" onChangeText={(value) => updateField('homePostalCode', value)} value={form.homePostalCode} />
-      <Field label="Nama Kontak Darurat" onChangeText={(value) => updateField('emergencyContactName', value)} value={form.emergencyContactName} />
-      <Field keyboardType="phone-pad" label="Nomor Kontak Darurat" onChangeText={(value) => updateField('emergencyContactPhone', value)} value={form.emergencyContactPhone} />
+      <Field label="Alamat Rumah" multiline onChangeText={(value) => updateField('homeAddress', value)} placeholder="Masukkan alamat lengkap rumah" value={form.homeAddress} valid />
+      <Field label="Provinsi/Negeri" onChangeText={(value) => updateField('homeState', value)} placeholder="Contoh: Selangor" value={form.homeState} />
+      <Field label="Kabupaten/Daerah" onChangeText={(value) => updateField('homeDistrict', value)} placeholder="Contoh: Petaling" value={form.homeDistrict} />
+      <Field label="Kecamatan/Mukim" onChangeText={(value) => updateField('homeLocality', value)} placeholder="Contoh: Damansara" value={form.homeLocality} />
+      <Field label="Kota" onChangeText={(value) => updateField('homeCity', value)} placeholder="Contoh: Petaling Jaya" value={form.homeCity} />
+      <Field keyboardType="number-pad" label="Kode Pos" onChangeText={(value) => updateField('homePostalCode', value)} placeholder="Contoh: 47800" value={form.homePostalCode} />
+      <Field label="Nama Kontak Darurat" onChangeText={(value) => updateField('emergencyContactName', value)} placeholder="Nama keluarga/kerabat" value={form.emergencyContactName} />
+      <Field keyboardType="phone-pad" label="Nomor Kontak Darurat" onChangeText={(value) => updateField('emergencyContactPhone', value)} placeholder="Contoh: 0123456789" value={form.emergencyContactPhone} />
     </View>
   );
 }
@@ -314,17 +616,17 @@ function WorkStep({
 }) {
   return (
     <View style={styles.form}>
-      <Field label="Status Pekerjaan" onChangeText={(value) => updateField('status', value)} value={form.status} />
-      <Field label="Nama Perusahaan" onChangeText={(value) => updateField('company', value)} value={form.company} />
-      <Field label="Jabatan" onChangeText={(value) => updateField('job', value)} value={form.job} />
-      <Field label="Penghasilan Bulanan" onChangeText={(value) => updateField('income', value)} value={form.income} />
+      <SelectField label="Status Pekerjaan" onChange={(value) => updateField('status', value)} options={employmentOptions} placeholder="Pilih status pekerjaan" value={form.status} />
+      <Field label="Nama Perusahaan" onChangeText={(value) => updateField('company', value)} placeholder="Contoh: Nexa Sdn Bhd" value={form.company} />
+      <Field label="Jabatan" onChangeText={(value) => updateField('job', value)} placeholder="Contoh: Staff Operasional" value={form.job} />
+      <SelectField label="Penghasilan Bulanan" onChange={(value) => updateField('income', value)} options={incomeOptions} placeholder="Pilih rentang penghasilan" value={form.income} />
       <AddressSearch label="Cari Alamat Kantor di Malaysia" onSelect={onAddressSelect} placeholder="Contoh: Menara Maybank Kuala Lumpur" />
-      <Field label="Alamat Kantor" multiline onChangeText={(value) => updateField('workAddress', value)} value={form.workAddress} valid />
-      <Field label="Provinsi/Negeri" onChangeText={(value) => updateField('workState', value)} value={form.workState} />
-      <Field label="Kabupaten/Daerah" onChangeText={(value) => updateField('workDistrict', value)} value={form.workDistrict} />
-      <Field label="Kecamatan/Mukim" onChangeText={(value) => updateField('workLocality', value)} value={form.workLocality} />
-      <Field label="Kota" onChangeText={(value) => updateField('workCity', value)} value={form.workCity} />
-      <Field keyboardType="number-pad" label="Kode Pos" onChangeText={(value) => updateField('workPostalCode', value)} value={form.workPostalCode} />
+      <Field label="Alamat Kantor" multiline onChangeText={(value) => updateField('workAddress', value)} placeholder="Masukkan alamat lengkap kantor" value={form.workAddress} valid />
+      <Field label="Provinsi/Negeri" onChangeText={(value) => updateField('workState', value)} placeholder="Contoh: Wilayah Persekutuan" value={form.workState} />
+      <Field label="Kabupaten/Daerah" onChangeText={(value) => updateField('workDistrict', value)} placeholder="Contoh: Kuala Lumpur" value={form.workDistrict} />
+      <Field label="Kecamatan/Mukim" onChangeText={(value) => updateField('workLocality', value)} placeholder="Contoh: Bukit Bintang" value={form.workLocality} />
+      <Field label="Kota" onChangeText={(value) => updateField('workCity', value)} placeholder="Contoh: Kuala Lumpur" value={form.workCity} />
+      <Field keyboardType="number-pad" label="Kode Pos" onChangeText={(value) => updateField('workPostalCode', value)} placeholder="Contoh: 50050" value={form.workPostalCode} />
     </View>
   );
 }
@@ -388,16 +690,63 @@ function AddressSearch({ label, onSelect, placeholder }: { label: string; onSele
   );
 }
 
-function DocumentsStep() {
+function DocumentsStep({
+  documents,
+  setDocuments,
+}: {
+  documents: Partial<Record<DocumentType, LocalDocument>>;
+  setDocuments: (documents: Partial<Record<DocumentType, LocalDocument>>) => void;
+}) {
+  async function pickDocument(item: (typeof documentMeta)[number]) {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: false,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.82,
+    });
+
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    setDocuments({
+      ...documents,
+      [item.type]: {
+        name: asset.fileName ?? `${item.type}.jpg`,
+        required: item.required,
+        type: item.type,
+        uri: asset.uri,
+      },
+    });
+  }
+
   return (
     <View style={styles.documentList}>
-      <DocumentCard title="Slip Gaji" description="Upload slip gaji 3 bulan terakhir" />
-      <DocumentCard title="Rekening Koran" description="Upload rekening koran 3 bulan terakhir" />
+      {documentMeta.map((item) => (
+        <DocumentCard
+          description={item.description}
+          document={documents[item.type]}
+          key={item.type}
+          onPress={() => pickDocument(item)}
+          required={item.required}
+          title={item.name}
+        />
+      ))}
     </View>
   );
 }
 
-function ReviewStep({ form, onEdit }: { form: ApplicationForm; onEdit: (step: number) => void }) {
+function ReviewStep({
+  documents,
+  form,
+  onEdit,
+}: {
+  documents: Partial<Record<DocumentType, LocalDocument>>;
+  form: ApplicationForm;
+  onEdit: (step: number) => void;
+}) {
   return (
     <View style={styles.reviewList}>
       <ReviewCard onEdit={() => onEdit(2)} rows={[
@@ -415,7 +764,7 @@ function ReviewStep({ form, onEdit }: { form: ApplicationForm; onEdit: (step: nu
       <ReviewCard onEdit={() => onEdit(3)} rows={[
         ['Perusahaan', form.company],
         ['Jabatan', form.job],
-        ['Penghasilan', form.income],
+        ['Penghasilan', incomeLabel(form.income)],
         ['Alamat Kantor', form.workAddress],
         ['Provinsi/Negeri', form.workState],
         ['Kabupaten/Daerah', form.workDistrict],
@@ -423,17 +772,57 @@ function ReviewStep({ form, onEdit }: { form: ApplicationForm; onEdit: (step: nu
         ['Kode Pos', form.workPostalCode],
       ]} title="Pekerjaan" />
       <ReviewCard onEdit={() => onEdit(4)} rows={[
-        ['Slip Gaji', 'Tidak diunggah'],
-        ['Rekening Koran', 'Tidak diunggah'],
+        ['KTP', documents.ktp ? 'Sudah diunggah' : 'Belum diunggah'],
+        ['NPWP', documents.npwp ? 'Sudah diunggah' : 'Belum diunggah'],
+        ['Foto Selfie', documents.selfie ? 'Sudah diunggah' : 'Belum diunggah'],
+        ['Slip Gaji', documents.salary_slip ? 'Sudah diunggah' : 'Opsional'],
+        ['Rekening Koran', documents.bank_statement ? 'Sudah diunggah' : 'Opsional'],
       ]} title="Dokumen" />
+      <View style={styles.previewGrid}>
+        {documentMeta.map((item) => {
+          const uploaded = documents[item.type];
+          if (!uploaded) return null;
+
+          return (
+            <View key={item.type} style={styles.reviewPreview}>
+              <Image source={{ uri: uploaded.uri }} style={styles.reviewPreviewImage} />
+              <Text style={styles.reviewPreviewText}>{item.name}</Text>
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
-function OtpStep({ devOtp, notice, otp, setOtp }: { devOtp: string | null; notice: string; otp: string; setOtp: (value: string) => void }) {
+function OtpStep({
+  devOtp,
+  notice,
+  onResend,
+  otp,
+  remainingSeconds,
+  resendLoading,
+  setOtp,
+}: {
+  devOtp: string | null;
+  notice: string;
+  onResend: () => void;
+  otp: string;
+  remainingSeconds: number;
+  resendLoading: boolean;
+  setOtp: (value: string) => void;
+}) {
   return (
     <View style={styles.otpWrap}>
-      <TextInput keyboardType="number-pad" maxLength={6} onChangeText={setOtp} placeholder="Masukkan 6 digit OTP" placeholderTextColor="#91A0B8" style={styles.otpInput} value={otp} />
+      <TextInput keyboardType="number-pad" maxLength={6} onChangeText={setOtp} placeholder="000000" placeholderTextColor="#91A0B8" style={styles.otpInput} value={otp} />
+      <View style={styles.otpMetaRow}>
+        <Text style={styles.otpTimer}>
+          {remainingSeconds > 0 ? `Berlaku ${formatCountdown(remainingSeconds)}` : 'OTP sudah kedaluwarsa'}
+        </Text>
+        <Pressable disabled={resendLoading || remainingSeconds > 240} onPress={onResend} style={styles.resendButton}>
+          {resendLoading ? <ActivityIndicator color="#006BFF" size="small" /> : <Text style={styles.resendText}>Kirim ulang</Text>}
+        </Pressable>
+      </View>
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       {devOtp ? <Text style={styles.notice}>Kode development: {devOtp}</Text> : null}
       <View style={styles.otpNotice}>
@@ -489,16 +878,23 @@ function Field(props: {
   label: string;
   multiline?: boolean;
   onChangeText: (value: string) => void;
+  placeholder?: string;
   secureTextEntry?: boolean;
   valid?: boolean;
   value: string;
 }) {
-  const { icon, label, multiline, valid, ...inputProps } = props;
+  const { icon, label, multiline, placeholder, valid, ...inputProps } = props;
   return (
     <View style={[styles.inputGroup, styles.fieldFlex]}>
       <Text style={styles.label}>{label}</Text>
       <View style={[styles.input, multiline && styles.textArea]}>
-        <TextInput placeholderTextColor="#91A0B8" style={[styles.textInput, multiline && styles.textAreaInput]} multiline={multiline} {...inputProps} />
+        <TextInput
+          multiline={multiline}
+          placeholder={placeholder ?? label}
+          placeholderTextColor="#91A0B8"
+          style={[styles.textInput, multiline && styles.textAreaInput]}
+          {...inputProps}
+        />
         {valid ? <Ionicons color="#16A34A" name="checkmark" size={18} /> : null}
         {icon ? <Ionicons color="#53627A" name={icon} size={18} /> : null}
       </View>
@@ -506,7 +902,158 @@ function Field(props: {
   );
 }
 
-function DocumentCard({ description, title }: { description: string; title: string }) {
+function DateField({ label, onChange, value }: { label: string; onChange: (value: string) => void; value: string }) {
+  const [visible, setVisible] = useState(false);
+  const parsed = parseDisplayDate(value);
+
+  return (
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>{label}</Text>
+      <Pressable onPress={() => setVisible(true)} style={styles.input}>
+        <Text style={[styles.selectValue, !value && styles.placeholderText]}>{value || 'Pilih tanggal lahir'}</Text>
+        <Ionicons color="#53627A" name="calendar-outline" size={18} />
+      </Pressable>
+      {visible ? (
+        <DateTimePicker
+          display="default"
+          maximumDate={new Date()}
+          mode="date"
+          onChange={(_, date) => {
+            setVisible(false);
+            if (date) onChange(formatDisplayDate(date));
+          }}
+          value={parsed ?? new Date(1995, 0, 1)}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+function SelectField({
+  label,
+  onChange,
+  options,
+  placeholder,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  options: Option[];
+  placeholder: string;
+  value: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  const selected = options.find((option) => option.value === value);
+
+  return (
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>{label}</Text>
+      <Pressable onPress={() => setVisible(true)} style={styles.input}>
+        <Text style={[styles.selectValue, !selected && styles.placeholderText]}>{selected?.label ?? placeholder}</Text>
+        <Ionicons color="#53627A" name="chevron-down" size={18} />
+      </Pressable>
+      <OptionModal
+        onClose={() => setVisible(false)}
+        onSelect={(nextValue) => {
+          onChange(nextValue);
+          setVisible(false);
+        }}
+        options={options}
+        selectedValue={value}
+        title={label}
+        visible={visible}
+      />
+    </View>
+  );
+}
+
+function CountryCodeField({ country, onChange }: { country: CountryCode; onChange: (country: CountryCode) => void }) {
+  const [visible, setVisible] = useState(false);
+  const selected = countryByCode(country);
+
+  return (
+    <View style={[styles.inputGroup, styles.countryField]}>
+      <Text style={styles.label}>Kode</Text>
+      <Pressable onPress={() => setVisible(true)} style={[styles.input, styles.countryInput]}>
+        <CountryFlag code={selected.value} />
+        <Text style={styles.countryCodeText}>{selected.dialCode}</Text>
+        <Ionicons color="#53627A" name="chevron-down" size={16} />
+      </Pressable>
+      <Modal animationType="fade" onRequestClose={() => setVisible(false)} transparent visible={visible}>
+        <Pressable onPress={() => setVisible(false)} style={styles.modalBackdrop}>
+          <Pressable style={styles.optionSheet}>
+            <Text style={styles.optionTitle}>Pilih Negara</Text>
+            {countries.map((item) => (
+              <Pressable
+                key={item.value}
+                onPress={() => {
+                  onChange(item.value);
+                  setVisible(false);
+                }}
+                style={[styles.countryOption, item.value === country && styles.optionActive]}
+              >
+                <CountryFlag code={item.value} />
+                <View style={styles.countryOptionCopy}>
+                  <Text style={styles.optionLabel}>{item.label}</Text>
+                  <Text style={styles.optionHint}>{item.hint}</Text>
+                </View>
+                <Text style={styles.optionValue}>{item.dialCode}</Text>
+              </Pressable>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+function OptionModal({
+  onClose,
+  onSelect,
+  options,
+  selectedValue,
+  title,
+  visible,
+}: {
+  onClose: () => void;
+  onSelect: (value: string) => void;
+  options: Option[];
+  selectedValue: string;
+  title: string;
+  visible: boolean;
+}) {
+  return (
+    <Modal animationType="fade" onRequestClose={onClose} transparent visible={visible}>
+      <Pressable onPress={onClose} style={styles.modalBackdrop}>
+        <Pressable style={styles.optionSheet}>
+          <Text style={styles.optionTitle}>{title}</Text>
+          <ScrollView style={styles.optionList} showsVerticalScrollIndicator={false}>
+            {options.map((item) => (
+              <Pressable key={item.value} onPress={() => onSelect(item.value)} style={[styles.optionRow, item.value === selectedValue && styles.optionActive]}>
+                <Text style={styles.optionLabel}>{item.label}</Text>
+                {item.value === selectedValue ? <Ionicons color="#006BFF" name="checkmark-circle" size={22} /> : null}
+              </Pressable>
+            ))}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function DocumentCard({
+  description,
+  document,
+  onPress,
+  required,
+  title,
+}: {
+  description: string;
+  document?: LocalDocument;
+  onPress: () => void;
+  required: boolean;
+  title: string;
+}) {
   return (
     <View style={styles.documentCard}>
       <View style={styles.docTop}>
@@ -515,11 +1062,16 @@ function DocumentCard({ description, title }: { description: string; title: stri
           <Text style={styles.docTitle}>{title}</Text>
           <Text style={styles.docDesc}>{description}</Text>
         </View>
-        <View style={styles.optionalBadge}><Text style={styles.optionalText}>Opsional</Text></View>
+        <View style={[styles.optionalBadge, required && styles.requiredBadge]}>
+          <Text style={[styles.optionalText, required && styles.requiredText]}>{required ? 'Wajib' : 'Opsional'}</Text>
+        </View>
       </View>
-      <Pressable style={styles.uploadButton}>
+      {document ? (
+        <Image source={{ uri: document.uri }} style={styles.documentPreview} />
+      ) : null}
+      <Pressable onPress={onPress} style={styles.uploadButton}>
         <Ionicons color="#006BFF" name="cloud-upload-outline" size={20} />
-        <Text style={styles.uploadText}>Upload Dokumen</Text>
+        <Text style={styles.uploadText}>{document ? 'Ganti Dokumen' : 'Upload Dokumen'}</Text>
       </Pressable>
     </View>
   );
@@ -530,7 +1082,7 @@ function ReviewCard({ onEdit, rows, title }: { onEdit: () => void; rows: string[
     <View style={styles.reviewCard}>
       <View style={styles.reviewHeader}>
         <Text style={styles.reviewTitle}>{title}</Text>
-        <Pressable onPress={onEdit} style={styles.editBadge}><Text style={styles.editText}>Edit</Text></Pressable>
+        <Pressable onPress={onEdit} style={styles.editBadge}><Text style={styles.editText}>Edit data kembali</Text></Pressable>
       </View>
       {rows.map(([label, value]) => (
         <View key={label} style={styles.reviewRow}>
@@ -561,6 +1113,9 @@ function buttonLabel(step: number) {
 }
 
 function formFromProfile(profile?: CreditCardProfile | null, user?: { name: string; email: string; phone?: string } | null): ApplicationForm {
+  const detectedCountry = detectCountry(user?.phone ?? '') ?? 'MY';
+  const selectedCountry = countryByCode(detectedCountry);
+
   return {
     ...initialForm,
     email: user?.email ?? initialForm.email,
@@ -574,7 +1129,10 @@ function formFromProfile(profile?: CreditCardProfile | null, user?: { name: stri
     income: profile?.monthly_income ?? initialForm.income,
     job: profile?.occupation ?? initialForm.job,
     name: user?.name ?? initialForm.name,
-    phone: user?.phone?.replace(/^60/, '') ?? initialForm.phone,
+    password: '',
+    phone: user?.phone ? stripDialCode(user.phone, detectedCountry) : initialForm.phone,
+    phoneCode: selectedCountry.dialCode,
+    phoneCountry: detectedCountry,
     workAddress: profile?.work_address ?? initialForm.workAddress,
     workCity: profile?.work_city ?? initialForm.workCity,
     workDistrict: profile?.work_district ?? initialForm.workDistrict,
@@ -611,7 +1169,17 @@ function profilePayload(form: ApplicationForm) {
 }
 
 function normalizedPhone(form: ApplicationForm) {
-  return `${form.phoneCode}${form.phone}`.replace(/\D/g, '');
+  const country = countryByCode(form.phoneCountry);
+  const dialCode = country.dialCode.replace(/\D/g, '');
+  let phone = form.phone.replace(/\D/g, '');
+
+  if (phone.startsWith(dialCode)) {
+    phone = phone.slice(dialCode.length);
+  }
+
+  phone = phone.replace(/^0+/, '');
+
+  return `${dialCode}${phone}`;
 }
 
 function numericAmount(value: string) {
@@ -633,19 +1201,77 @@ function statusLabel(status: string) {
   return labels[status] ?? status;
 }
 
+function countryByCode(code: CountryCode) {
+  return countries.find((country) => country.value === code) ?? countries[0];
+}
+
+function detectCountry(value: string): CountryCode | null {
+  const digits = value.replace(/\D/g, '');
+
+  if (!digits) return null;
+  if (digits.startsWith('08') || digits.startsWith('62')) return 'ID';
+  if (digits.startsWith('01') || digits.startsWith('60')) return 'MY';
+  if (digits.startsWith('65')) return 'SG';
+  if (digits.startsWith('673')) return 'BN';
+
+  return null;
+}
+
+function stripDialCode(value: string, country: CountryCode) {
+  const dialCode = countryByCode(country).dialCode.replace(/\D/g, '');
+  const digits = value.replace(/\D/g, '');
+
+  return digits.startsWith(dialCode) ? digits.slice(dialCode.length) : digits;
+}
+
+function parseDisplayDate(value: string) {
+  const [day, month, year] = value.split(/[/-]/).map(Number);
+
+  if (!day || !month || !year) return null;
+
+  return new Date(year, month - 1, day);
+}
+
+function formatDisplayDate(value: Date) {
+  const day = String(value.getDate()).padStart(2, '0');
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+
+  return `${day}/${month}/${value.getFullYear()}`;
+}
+
+function incomeLabel(value: string) {
+  return incomeOptions.find((option) => option.value === value)?.label ?? value;
+}
+
+function formatCountdown(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+
+  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+}
+
+function mimeFromUri(uri: string) {
+  const extension = uri.split('.').pop()?.toLowerCase();
+
+  if (extension === 'png') return 'image/png';
+  if (extension === 'webp') return 'image/webp';
+
+  return 'image/jpeg';
+}
+
 const styles = StyleSheet.create({
   page: { backgroundColor: '#06185F', flex: 1 },
-  header: { backgroundColor: '#06185F', minHeight: 242, paddingHorizontal: 22, paddingTop: 54 },
-  headerTop: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+  header: { backgroundColor: '#06185F', minHeight: 214, paddingHorizontal: 22, paddingTop: 50 },
+  headerTop: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   backButton: { alignItems: 'center', height: 34, justifyContent: 'center', width: 34 },
   headerBadge: { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.18)', borderRadius: 8, borderWidth: 1, paddingHorizontal: 11, paddingVertical: 7 },
   headerBadgeText: { color: '#D9E8FF', fontSize: 12, fontWeight: '900' },
-  headerInfo: { alignItems: 'center', flexDirection: 'row', gap: 14, marginBottom: 18 },
-  headerIcon: { alignItems: 'center', backgroundColor: 'rgba(10,153,255,0.22)', borderRadius: 8, height: 46, justifyContent: 'center', width: 46 },
+  headerInfo: { alignItems: 'center', flexDirection: 'row', gap: 10, marginBottom: 14 },
   headerCopy: { flex: 1 },
+  stepIllustration: { alignItems: 'center', height: 72, justifyContent: 'center', overflow: 'hidden', width: 92 },
   stepText: { color: '#9CCAFF', fontSize: 12, fontWeight: '900', marginBottom: 5 },
-  title: { color: '#FFFFFF', fontSize: 25, fontWeight: '900', lineHeight: 31 },
-  subtitle: { color: '#D9E6FF', fontSize: 13, lineHeight: 20, marginTop: 13 },
+  title: { color: '#FFFFFF', fontSize: 21, fontWeight: '900', lineHeight: 26 },
+  subtitle: { color: '#D9E6FF', fontSize: 12, lineHeight: 18, marginTop: 10 },
   progressRow: { flexDirection: 'row' },
   progressItem: { alignItems: 'center', flex: 1, flexDirection: 'row' },
   progressLine: { backgroundColor: 'rgba(255,255,255,0.28)', flex: 1, height: 3 },
@@ -653,7 +1279,7 @@ const styles = StyleSheet.create({
   progressDot: { backgroundColor: 'rgba(255,255,255,0.34)', borderRadius: 6, height: 12, marginLeft: -2, width: 12 },
   progressDotActive: { backgroundColor: '#0A99FF' },
   sheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, flex: 1, marginTop: -18, overflow: 'hidden' },
-  sheetContent: { padding: 22, paddingBottom: 122 },
+  sheetContent: { padding: 22, paddingBottom: 190 },
   form: { gap: 17 },
   inputGroup: { gap: 8 },
   fieldFlex: { flex: 1 },
@@ -663,6 +1289,22 @@ const styles = StyleSheet.create({
   textArea: { alignItems: 'flex-start', minHeight: 78, paddingVertical: 10 },
   textAreaInput: { minHeight: 56, textAlignVertical: 'top' },
   phoneRow: { flexDirection: 'row', gap: 10 },
+  countryField: { width: 116 },
+  countryInput: { gap: 7, paddingHorizontal: 10 },
+  countryCodeText: { color: '#10275D', fontSize: 13, fontWeight: '900' },
+  selectValue: { color: '#10275D', flex: 1, fontSize: 14, fontWeight: '700' },
+  placeholderText: { color: '#91A0B8', fontWeight: '500' },
+  modalBackdrop: { alignItems: 'center', backgroundColor: 'rgba(4,13,35,0.38)', flex: 1, justifyContent: 'flex-end', padding: 18 },
+  optionSheet: { backgroundColor: '#FFFFFF', borderRadius: 14, gap: 8, padding: 16, width: '100%' },
+  optionList: { maxHeight: 430 },
+  optionTitle: { color: '#061946', fontSize: 17, fontWeight: '900', marginBottom: 6 },
+  optionRow: { alignItems: 'center', borderColor: '#E8EEF7', borderRadius: 8, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, minHeight: 52, paddingHorizontal: 14 },
+  optionActive: { backgroundColor: '#EEF5FF', borderColor: '#AFCBFF' },
+  optionLabel: { color: '#10275D', fontSize: 14, fontWeight: '800' },
+  countryOption: { alignItems: 'center', borderColor: '#E8EEF7', borderRadius: 8, borderWidth: 1, flexDirection: 'row', gap: 12, minHeight: 62, paddingHorizontal: 14 },
+  countryOptionCopy: { flex: 1 },
+  optionHint: { color: '#6D7A92', fontSize: 11, marginTop: 3 },
+  optionValue: { color: '#006BFF', fontSize: 13, fontWeight: '900' },
   addressSearch: { backgroundColor: '#F7FAFF', borderColor: '#DCE7F5', borderRadius: 8, borderWidth: 1, gap: 10, padding: 12 },
   searchRow: { flexDirection: 'row', gap: 10 },
   searchInput: { flex: 1, gap: 8 },
@@ -690,6 +1332,9 @@ const styles = StyleSheet.create({
   docDesc: { color: '#6D7A92', fontSize: 12, lineHeight: 18, marginTop: 6 },
   optionalBadge: { backgroundColor: '#EAF2FF', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5 },
   optionalText: { color: '#1677FF', fontSize: 11, fontWeight: '900' },
+  requiredBadge: { backgroundColor: '#FFF1E6' },
+  requiredText: { color: '#B45309' },
+  documentPreview: { backgroundColor: '#EEF2F7', borderRadius: 8, height: 150, marginTop: 14, width: '100%' },
   uploadButton: { alignItems: 'center', borderColor: '#D6E0EF', borderRadius: 8, borderStyle: 'dashed', borderWidth: 1, flexDirection: 'row', gap: 8, height: 58, justifyContent: 'center', marginTop: 20 },
   uploadText: { color: '#006BFF', fontSize: 14, fontWeight: '900' },
   reviewList: { gap: 16 },
@@ -701,8 +1346,16 @@ const styles = StyleSheet.create({
   reviewRow: { flexDirection: 'row', gap: 16, justifyContent: 'space-between', paddingVertical: 6 },
   reviewLabel: { color: '#6C7890', fontSize: 12 },
   reviewValue: { color: '#10275D', flex: 1, fontSize: 12, fontWeight: '700', textAlign: 'right' },
+  previewGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  reviewPreview: { backgroundColor: '#F7FAFF', borderColor: '#E4EBF5', borderRadius: 8, borderWidth: 1, overflow: 'hidden', width: '48%' },
+  reviewPreviewImage: { backgroundColor: '#EEF2F7', height: 104, width: '100%' },
+  reviewPreviewText: { color: '#10275D', fontSize: 11, fontWeight: '900', padding: 9 },
   otpWrap: { gap: 20, paddingTop: 10 },
   otpInput: { borderColor: '#B9CEF1', borderRadius: 8, borderWidth: 1.5, color: '#061946', fontSize: 22, fontWeight: '900', height: 58, letterSpacing: 8, textAlign: 'center' },
+  otpMetaRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  otpTimer: { color: '#61708A', fontSize: 12, fontWeight: '800' },
+  resendButton: { alignItems: 'center', minHeight: 34, justifyContent: 'center', paddingHorizontal: 8 },
+  resendText: { color: '#006BFF', fontSize: 13, fontWeight: '900' },
   otpNotice: { alignItems: 'center', backgroundColor: '#F1F6FF', borderRadius: 8, flexDirection: 'row', gap: 12, padding: 16 },
   otpNoticeText: { color: '#5C6B84', flex: 1, fontSize: 12, lineHeight: 17 },
   notice: { color: '#0F5E9C', fontSize: 13, fontWeight: '700', lineHeight: 19 },
@@ -723,4 +1376,43 @@ const styles = StyleSheet.create({
   statusLabel: { color: '#61708A', fontSize: 13 },
   statusValueWrap: { alignItems: 'center', flexDirection: 'row', gap: 6 },
   statusValue: { color: '#061946', fontSize: 13, fontWeight: '900' },
+  accountPage: { backgroundColor: '#06185F', flex: 1 },
+  accountContent: { padding: 22, paddingBottom: 48, paddingTop: 68 },
+  accountHero: { gap: 10, marginBottom: 18 },
+  accountBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  accountBadgeText: { color: '#D9E8FF', fontSize: 12, fontWeight: '900' },
+  accountTitle: { color: '#FFFFFF', fontSize: 28, fontWeight: '900', lineHeight: 34 },
+  accountSubtitle: { color: '#D9E6FF', fontSize: 13, lineHeight: 20 },
+  accountCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    gap: 16,
+    padding: 18,
+  },
+  accountNotice: { color: '#B42318', fontSize: 12, lineHeight: 18 },
+  accountPrimaryButton: {
+    alignItems: 'center',
+    backgroundColor: '#0A3B97',
+    borderRadius: 14,
+    minHeight: 50,
+    justifyContent: 'center',
+  },
+  accountPrimaryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+  accountSecondaryButton: {
+    alignItems: 'center',
+    borderColor: '#DCE4EF',
+    borderRadius: 14,
+    borderWidth: 1,
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  accountSecondaryText: { color: '#10275D', fontSize: 13, fontWeight: '800' },
 });

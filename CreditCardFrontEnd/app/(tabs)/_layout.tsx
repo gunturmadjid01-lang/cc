@@ -1,58 +1,115 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import React from 'react';
-import { Platform } from 'react-native';
-
-import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { StyleSheet, Text, View } from 'react-native';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: 'absolute',
-          },
-          default: {},
-        }),
+        tabBarActiveTintColor: '#174DCE',
+        tabBarInactiveTintColor: '#A4A8B4',
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarStyle: styles.tabBar,
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Beranda',
+          tabBarIcon: ({ color, size }) => <Ionicons color={color} name="home-outline" size={size} />,
         }}
       />
       <Tabs.Screen
-        name="verification"
+        name="bayar"
         options={{
-          title: 'Verifikasi',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="checkmark.shield.fill" color={color} />,
+          title: 'Bayar',
+          tabBarIcon: ({ color, size }) => <Ionicons color={color} name="wallet-outline" size={size} />,
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="qris"
         options={{
-          title: 'Profil',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
+          title: 'QRIS',
+          tabBarIcon: ({ focused }) => (
+            <View style={[styles.qrisButton, focused && styles.qrisButtonActive]}>
+              <Ionicons color="#FFFFFF" name="qr-code-outline" size={24} />
+            </View>
+          ),
+          tabBarItemStyle: styles.qrisItem,
+          tabBarLabel: ({ focused }) => <Text style={[styles.qrisLabel, focused && styles.qrisLabelActive]}>QRIS</Text>,
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="rewards"
         options={{
-          href: null,
+          title: 'Rewards',
+          tabBarIcon: ({ color, size }) => <Ionicons color={color} name="gift-outline" size={size} />,
         }}
       />
+      <Tabs.Screen name="menu" options={{ title: 'Menu', tabBarIcon: ({ color, size }) => <Ionicons color={color} name="menu-outline" size={size} /> }} />
+      <Tabs.Screen name="verification" options={{ href: null }} />
+      <Tabs.Screen name="profile" options={{ href: null }} />
+      <Tabs.Screen name="explore" options={{ href: null }} />
+      <Tabs.Screen name="bills" options={{ href: null }} />
+      <Tabs.Screen name="score" options={{ href: null }} />
+      <Tabs.Screen name="pin" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="language" options={{ href: null }} />
+      <Tabs.Screen name="physical-card" options={{ href: null }} />
+      <Tabs.Screen name="support" options={{ href: null }} />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: '#FFFFFF',
+    borderTopColor: '#E8ECF4',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderTopWidth: 1,
+    elevation: 14,
+    height: 76,
+    overflow: 'visible',
+    paddingBottom: 10,
+    paddingTop: 8,
+    shadowColor: '#081A46',
+    shadowOffset: { height: -6, width: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  qrisItem: {
+    overflow: 'visible',
+  },
+  qrisButton: {
+    alignItems: 'center',
+    backgroundColor: '#174DCE',
+    borderColor: '#FFFFFF',
+    borderRadius: 32,
+    borderWidth: 5,
+    elevation: 12,
+    height: 64,
+    justifyContent: 'center',
+    marginBottom: 26,
+    shadowColor: '#174DCE',
+    shadowOffset: { height: 8, width: 0 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    width: 64,
+  },
+  qrisButtonActive: {
+    backgroundColor: '#0F3FB4',
+  },
+  qrisLabel: {
+    color: '#8B92A3',
+    fontSize: 11,
+    fontWeight: '900',
+    marginTop: 18,
+  },
+  qrisLabelActive: {
+    color: '#174DCE',
+  },
+});

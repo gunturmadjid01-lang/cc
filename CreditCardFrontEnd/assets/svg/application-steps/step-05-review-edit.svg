@@ -1,0 +1,21 @@
+<svg width="320" height="180" viewBox="0 0 320 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sheet" x1="84" y1="25" x2="230" y2="155" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7FAFF"/>
+      <stop offset="1" stop-color="#DCE7FF"/>
+    </linearGradient>
+    <linearGradient id="pen" x1="200" y1="86" x2="265" y2="146" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8C84D"/>
+      <stop offset="1" stop-color="#D98913"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="160" cy="154" rx="92" ry="12" fill="#0A2B88" opacity=".1"/>
+  <rect x="83" y="26" width="146" height="128" rx="24" fill="url(#sheet)" stroke="#C4D3FF" stroke-width="2"/>
+  <path d="M114 67h72M114 92h58M114 117h46" stroke="#5275D9" stroke-width="7" stroke-linecap="round"/>
+  <path d="M99 68l8 8 15-21M99 118l8 8 15-21" stroke="#12369C" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M204 118l45-45c5-5 13-5 18 0s5 13 0 18l-45 45-24 8 6-26z" fill="url(#pen)"/>
+  <path d="M246 76l18 18" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+  <path d="M207 121l12 12" stroke="#7B4B00" stroke-opacity=".45" stroke-width="5" stroke-linecap="round"/>
+  <rect x="50" y="47" width="42" height="42" rx="14" fill="#12369C"/>
+  <path d="M63 68h17M63 79h12" stroke="#EAF0FF" stroke-width="5" stroke-linecap="round"/>
+</svg>

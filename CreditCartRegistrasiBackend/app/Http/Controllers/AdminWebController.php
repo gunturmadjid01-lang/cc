@@ -97,13 +97,24 @@ class AdminWebController extends Controller
         $data = $request->validate([
             'application_status' => ['required', Rule::in(['approved', 'rejected'])],
             'credit_limit' => ['required_if:application_status,approved', 'nullable', 'numeric', 'min:0'],
+            'initial_deposit_amount' => ['required_if:application_status,approved', 'nullable', 'numeric', 'min:0'],
             'admin_notes' => ['nullable', 'string', 'max:2000'],
         ]);
+
+        $initialDeposit = (float) ($data['initial_deposit_amount'] ?? 0);
 
         $profile->update([
             'admin_notes' => $data['admin_notes'] ?? null,
             'application_status' => $data['application_status'],
             'credit_limit' => $data['application_status'] === 'approved' ? $data['credit_limit'] : null,
+            'initial_deposit_amount' => $data['application_status'] === 'approved' ? $initialDeposit : null,
+            'initial_deposit_status' => $data['application_status'] === 'approved'
+                ? ($initialDeposit > 0 ? 'pending' : 'paid')
+                : 'not_required',
+            'available_limit' => $data['application_status'] === 'approved' ? 0 : null,
+            'credit_limit_unlocked_at' => $data['application_status'] === 'approved'
+                ? ($initialDeposit > 0 ? null : now())
+                : null,
             'reviewed_at' => now(),
             'reviewed_by' => Auth::id(),
         ]);

@@ -1,0 +1,22 @@
+<svg width="320" height="180" viewBox="0 0 320 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="case" x1="78" y1="58" x2="238" y2="150" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#123DB8"/>
+      <stop offset="1" stop-color="#061A57"/>
+    </linearGradient>
+    <linearGradient id="coin" x1="221" y1="31" x2="266" y2="77" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE69B"/>
+      <stop offset="1" stop-color="#E7A51E"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="160" cy="153" rx="92" ry="12" fill="#0A2B88" opacity=".11"/>
+  <rect x="78" y="62" width="164" height="88" rx="20" fill="url(#case)"/>
+  <path d="M120 62V50c0-12 8-20 20-20h40c12 0 20 8 20 20v12" stroke="#194FE0" stroke-width="12" stroke-linecap="round"/>
+  <path d="M78 98h164" stroke="#4E78FF" stroke-opacity=".4" stroke-width="4"/>
+  <rect x="144" y="88" width="32" height="22" rx="8" fill="#F5B82E"/>
+  <path d="M108 124h43M170 124h42" stroke="#EAF0FF" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="243" cy="54" r="25" fill="url(#coin)"/>
+  <path d="M243 39v30M232 49c3-6 17-7 22-1 5 7-1 13-12 13-8 0-12 2-13 7" stroke="#fff" stroke-width="6" stroke-linecap="round"/>
+  <rect x="48" y="52" width="44" height="44" rx="15" fill="#EEF4FF"/>
+  <path d="M62 74h17M62 85h26M70 63h10" stroke="#12369C" stroke-width="5" stroke-linecap="round"/>
+</svg>

@@ -72,6 +72,27 @@ const patches = [
       '    )',
     ].join('\n'),
   },
+  {
+    file: 'node_modules/@voximplant/react-native-foreground-service/android/build.gradle',
+    from: [
+      'android {',
+      '    compileSdkVersion 28',
+      "    buildToolsVersion '28.0.3'",
+      '',
+      '    defaultConfig {',
+      '        minSdkVersion 16',
+      '        targetSdkVersion 28',
+    ].join('\n'),
+    to: [
+      'android {',
+      "    compileSdkVersion safeExtGet('compileSdkVersion', 35)",
+      "    buildToolsVersion safeExtGet('buildToolsVersion', '35.0.0')",
+      '',
+      '    defaultConfig {',
+      "        minSdkVersion safeExtGet('minSdkVersion', 23)",
+      "        targetSdkVersion safeExtGet('targetSdkVersion', 35)",
+    ].join('\n'),
+  },
 ];
 
 let changed = false;
